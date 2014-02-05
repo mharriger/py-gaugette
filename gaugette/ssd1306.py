@@ -52,9 +52,11 @@
 
 import gaugette.gpio
 import gaugette.spi
+import gaugette.bitmap
 import time
 import font5x8
 import sys
+import struct
 
 class SSD1306:
 
@@ -121,7 +123,7 @@ class SSD1306:
         self.gpio.output(self.dc_pin, self.gpio.LOW)
         self.font = font5x8.Font5x8
         self.col_offset = 0
-        self.bitmap = self.Bitmap(buffer_cols, buffer_rows)
+        self.bitmap = gaugette.bitmap.Bitmap(buffer_cols, buffer_rows, major_axis = 'y')
         self.flipped = False
 
     def reset(self):
@@ -136,15 +138,23 @@ class SSD1306:
 
     def data(self, bytes):
         self.gpio.output(self.dc_pin, self.gpio.HIGH)
-	# chunk data to work around 255 byte limitation in adafruit implementation of writebytes
-	start = 0
-	remaining = len(bytes)
-	max_xfer = 255  # revisit - change to 1024 when Adafruit_BBIO is fixed.
-	while remaining>0:
-	    count = remaining if remaining <= max_xfer else max_xfer
-	    remaining -= count
-	    self.spi.writebytes(bytes[start:start+count])
-	    start += count
+        # chunk data to work around 255 byte limitation in adafruit implementation of writebytes
+        start = 0
+        remaining = len(bytes)
+        max_xfer = 255  # revisit - change to 1024 when Adafruit_BBIO is fixed.
+        while remaining>0:
+            count = remaining if remaining <= max_xfer else max_xfer
+            remaining -= count
+            self.spi.writebytes(bytes[start:start+count])
+            print bytes[start:start+count]
+            start += count
+            self.gpio.output(self.dc_pin, self.gpio.LOW)
+
+    def data2(self, obj):
+        self.gpio.output(self.dc_pin, self.gpio.HIGH)
+        self.spi.lsbfirst = True 
+        self.spi.writeobject(obj)
+        self.spi.lsbfirst = False
         self.gpio.output(self.dc_pin, self.gpio.LOW)
         
     def begin(self, vcc_state = SWITCH_CAP_VCC):
@@ -220,7 +230,7 @@ class SSD1306:
     # col_offset: column offset in buffer to write from
     #  
     def display_block(self, bitmap, row, col, col_count, col_offset=0):
-        page_count = bitmap.rows >> 3
+        page_count = bitmap.height >> 3
         page_start = row >> 3
         page_end   = page_start + page_count - 1
         col_start  = col
@@ -230,7 +240,11 @@ class SSD1306:
         self.command(self.SET_COL_ADDRESS, col_start, col_end)
         start = col_offset * page_count
         length = col_count * page_count
-        self.data(bitmap.data[start:start+length])
+        #Must be a column-major bitmap
+        assert(bitmap.major_axis == 'y')
+        #Use data2 so that we don't need to convert the bitmap to a list
+        #of ints
+        self.data2(bitmap.data)
 
     # Diagnostic print of the memory buffer to stdout 
     def dump_buffer(self):
