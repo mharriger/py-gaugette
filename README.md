@@ -1,3 +1,5 @@
+This is my modified version of py-gaugette for use with reui. Eventually I hope to be able to use the stock py-gaugette, but that's a ways off.
+
 py-gaugette
 ===========
 
