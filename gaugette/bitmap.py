@@ -89,6 +89,65 @@ class Bitmap:
             (width, height) = (height, width)
         self.data[(y * width) + x] = on
 
+    # returns the width in pixels of the string allowing for kerning & interchar-spaces
+    def text_width(self, string, font):
+        x = 0
+        prev_char = None
+        for c in string:
+            if (c<font.start_char or c>font.end_char):
+                if prev_char != None:
+                    x += font.space_width + prev_width + font.gap_width
+                prev_char = None
+            else:
+                pos = ord(c) - ord(font.start_char)
+                (width,offset) = font.descriptors[pos]
+                if prev_char != None:
+                    x += font.kerning[prev_char][pos] + font.gap_width
+                prev_char = pos
+                prev_width = width
+                
+        if prev_char != None:
+            x += prev_width
+            
+        return x
+
+    def draw_text(self, x, y, string, font):
+        height = font.char_height
+        prev_char = None
+
+        for c in string:
+            if (c<font.start_char or c>font.end_char):
+                if prev_char != None:
+                    x += font.space_width + prev_width + font.gap_width
+                prev_char = None
+            else:
+                pos = ord(c) - ord(font.start_char)
+                (width,offset) = font.descriptors[pos]
+                if prev_char != None:
+                    x += font.kerning[prev_char][pos] + font.gap_width
+                prev_char = pos
+                prev_width = width
+                
+                bytes_per_row = (width + 7) / 8
+                for row in range(0,height):
+                    py = y + row
+                    mask = 0x80
+                    p = offset
+                    for col in range(0,width):
+                        px = x + col
+                        if (font.bitmaps[p] & mask):
+                            self.draw_pixel(px,py,1)  # for kerning, never draw black
+                        mask >>= 1
+                        if mask == 0:
+                            mask = 0x80
+                            p+=1
+                    offset += bytes_per_row
+          
+        if prev_char != None:
+            x += prev_width
+
+        return x
+
     def clear(self):
         self.data = self.width * self.height * bitarray('0')
 
