@@ -5,12 +5,11 @@ bitmap. Supports storage of bit in row- or column-major order.
 from bitarray import bitarray
 
 class Bitmap:
-    def __init__(self, width, height, major_axis = 'x', reverse_bits = False):
+    def __init__(self, width, height, major_axis = 'x'):
         self.width = width
         self.height = height
         self.data = (width * height) * bitarray('0', endian='little')
         self._major_axis = major_axis
-        self._reverse_bits = reverse_bits
 
     def _get_rows(self):
         height = self.height
