@@ -80,6 +80,36 @@ class Bitmap:
                     = col
                 count += 1
 
+    def invert_row(self, x):
+        height = self.height
+        width = self.width
+        if self._major_axis == 'y':
+            s = self.data[x:(width * height):height]
+            s.invert()
+            self.data[x:(width * height):height] = s
+        if self._major_axis == 'x':
+            s = self.data[(x * width):((x + 1) * width)]
+            s.invert()
+            self.data[(x * width):((x + 1) * width)] = s
+
+    def draw_box(self, x, y, bwidth, bheight, on = True):
+        height = self.height
+        width = self.width
+        if self._major_axis == 'y':
+            (x,y) = (y,x)
+            (width, height) = (height, width)
+            (bheight, bwidth) = (bwidth, bheight)
+        if self._major_axis == 'y':
+            for row in range(bheight):
+                self.data[((row + y) * width) + x:((row + y) * width) + x +
+                           bwidth] \
+                    = on
+        if self._major_axis == 'x':
+            for col in range(bwidth):
+                self.data[((col + y) * width) + x:((col + y) * width) + x +
+                          bheight] \
+                    = on
+
     def draw_pixel(self, x, y, on=True):
         height = self.height
         width = self.width
@@ -110,9 +140,14 @@ class Bitmap:
             
         return x
 
-    def draw_text(self, x, y, string, font):
+    def draw_text(self, x, y, string, font, inverse=False, inv_border = 2):
         height = font.char_height
         prev_char = None
+
+        if inverse:
+            #Draw a white filled box
+            self.draw_box(x - inv_border, y, self.text_width(string, font) + 
+                          (2 * inv_border), font.char_height)
 
         for c in string:
             if (c<font.start_char or c>font.end_char):
@@ -135,7 +170,7 @@ class Bitmap:
                     for col in range(0,width):
                         px = x + col
                         if (font.bitmaps[p] & mask):
-                            self.draw_pixel(px,py,1)  # for kerning, never draw black
+                            self.draw_pixel(px,py,not inverse)  # for kerning, never draw black
                         mask >>= 1
                         if mask == 0:
                             mask = 0x80
